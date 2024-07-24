@@ -1,4 +1,5 @@
 import { Keypair as SolKeypair } from '@solana/web3.js';
+import { Wallet } from 'xrpl';
 import type { ReadonlyUint8Array } from '@wallet-standard/core';
 import * as bip39 from 'bip39';
 import { derivePath } from 'ed25519-hd-key';
@@ -7,6 +8,7 @@ import { utils as ethUtils, Wallet as EthWallet } from 'ethers';
 // SLIP-44.
 // See: https://github.com/satoshilabs/slips/blob/master/slip-0044.md#registered-coin-types.
 const BIP44_COIN_TYPE_ETH = 60;
+const BIP44_COIN_TYPE_XRP = 144;
 const BIP44_COIN_TYPE_SOL = 501;
 
 export type Mnemonic = string;
@@ -16,7 +18,7 @@ export interface Keypair {
     privateKey: ReadonlyUint8Array;
 }
 
-export type Network = 'ethereum' | 'solana';
+export type Network = 'ethereum' | 'xrpl' | 'solana';
 
 export interface Account {
     network: Network;
@@ -39,6 +41,15 @@ function deriveEthereumKeypair(mnemonic: Mnemonic, index = 0): Keypair {
     };
 }
 
+function deriveXrplKeypair(mnemonic: Mnemonic, index = 0): Keypair {
+    const path = `m/44'/${BIP44_COIN_TYPE_XRP}'/0'/${index}'`;
+    const { publicKey, privateKey } = Wallet.fromMnemonic(mnemonic, { derivationPath: path });
+    return {
+        publicKey: new Uint8Array(Buffer.from(publicKey, 'hex')),
+        privateKey: new Uint8Array(Buffer.from(privateKey, 'hex')),
+    };
+}
+
 function deriveSolanaKeypair(mnemonic: Mnemonic, index = 0): Keypair {
     const seed = bip39.mnemonicToSeedSync(mnemonic, '');
     const path = `m/44'/${BIP44_COIN_TYPE_SOL}'/0'/${index}'`;
@@ -54,9 +65,11 @@ function deriveSolanaKeypair(mnemonic: Mnemonic, index = 0): Keypair {
  */
 export function getAccounts(mnemonic: Mnemonic): Account[] {
     const ethereumKeypair = deriveEthereumKeypair(mnemonic);
+    const xrplKeypair = deriveXrplKeypair(mnemonic);
     const solanaKeypair = deriveSolanaKeypair(mnemonic);
     return [
         { network: 'ethereum', publicKey: ethereumKeypair.publicKey },
+        { network: 'xrpl', publicKey: xrplKeypair.publicKey },
         { network: 'solana', publicKey: solanaKeypair.publicKey },
     ];
 }

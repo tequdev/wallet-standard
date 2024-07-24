@@ -3,8 +3,9 @@ import { utils as ethUtils } from 'ethers';
 import type { FC, ReactNode } from 'react';
 import React, { useEffect, useState } from 'react';
 import { rpc } from '../rpc/index';
+import { deriveAddress } from 'xrpl';
 
-export type Network = 'ethereum' | 'solana';
+export type Network = 'ethereum' | 'xrpl' | 'solana';
 
 export interface Account {
     network: Network;
@@ -16,6 +17,8 @@ function computeAddress(network: Network, publicKey: Uint8Array) {
     switch (network) {
         case 'ethereum':
             return ethUtils.computeAddress(publicKey);
+        case 'xrpl':
+            return deriveAddress(Buffer.from(publicKey).toString('hex'));
         case 'solana':
             return new SolPublicKey(publicKey).toBase58();
         default:

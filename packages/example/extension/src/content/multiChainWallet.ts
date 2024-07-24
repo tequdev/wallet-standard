@@ -13,6 +13,9 @@ import { ETHEREUM_MAINNET_CHAIN } from '@wallet-standard/ethereum';
 import bs58 from 'bs58';
 import { utils as ethUtils } from 'ethers';
 import type { RPC } from '../messages/index';
+import { deriveAddress } from 'xrpl';
+
+const XRPL_MAINNET_CHAIN = 'xrpl:mainnet' as const;
 
 export class EthereumWalletAccount implements WalletAccount {
     readonly #publicKey: Uint8Array;
@@ -35,6 +38,34 @@ export class EthereumWalletAccount implements WalletAccount {
 
     constructor(publicKey: Uint8Array) {
         if (new.target === EthereumWalletAccount) {
+            Object.freeze(this);
+        }
+
+        this.#publicKey = publicKey;
+    }
+}
+
+export class XRPLWalletAccount implements WalletAccount {
+    readonly #publicKey: Uint8Array;
+
+    get address() {
+        return deriveAddress(Buffer.from(this.publicKey).toString('hex'));
+    }
+
+    get publicKey() {
+        return this.#publicKey.slice();
+    }
+
+    get chains() {
+        return [XRPL_MAINNET_CHAIN] as const;
+    }
+
+    get features() {
+        return ['experimental:signTransaction'] as const;
+    }
+
+    constructor(publicKey: Uint8Array) {
+        if (new.target === XRPLWalletAccount) {
             Object.freeze(this);
         }
 
@@ -70,7 +101,7 @@ export class SolanaWalletAccount implements WalletAccount {
     }
 }
 
-export type MultiChainWalletAccount = EthereumWalletAccount | SolanaWalletAccount;
+export type MultiChainWalletAccount = EthereumWalletAccount | XRPLWalletAccount | SolanaWalletAccount;
 
 export class MultiChainWallet implements Wallet {
     #name = 'MultiChain Wallet';
@@ -96,7 +127,7 @@ export class MultiChainWallet implements Wallet {
     }
 
     get chains() {
-        return [ETHEREUM_MAINNET_CHAIN, SOLANA_MAINNET_CHAIN] as const;
+        return [ETHEREUM_MAINNET_CHAIN, XRPL_MAINNET_CHAIN, SOLANA_MAINNET_CHAIN] as const;
     }
 
     get features(): ConnectFeature & EventsFeature {
@@ -136,6 +167,8 @@ export class MultiChainWallet implements Wallet {
             switch (network) {
                 case 'ethereum':
                     return new EthereumWalletAccount(publicKey);
+                case 'xrpl':
+                    return new XRPLWalletAccount(publicKey);
                 case 'solana':
                     return new SolanaWalletAccount(publicKey);
                 default:
